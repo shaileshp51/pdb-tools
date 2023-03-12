@@ -125,6 +125,8 @@ def run(fhandle, shifting_factor):
         The modified (or not) PDB line.
     """
     records = ('ATOM', 'HETATM', 'TER', 'ANISOU')
+    connect_resids = ('SSBOND', 'CISPEP')
+    link_resids = ('LINK')
     for line in fhandle:
         if line.startswith(records):
             shifted_resid = int(line[22:26]) + shifting_factor
@@ -133,6 +135,28 @@ def run(fhandle, shifting_factor):
                 sys.stderr.write(emsg)
                 sys.exit(1)
             yield line[:22] + str(shifted_resid).rjust(4) + line[26:]
+
+        elif line.startswith(connect_resids):
+            shifted_resid1 = int(line[17:21]) + shifting_factor
+            shifted_resid2 = int(line[31:35]) + shifting_factor
+            if shifted_resid1 > 9999 or shifted_resid1 > 9999:
+                emsg = 'Cannot set residue number above 9999.\n'
+                sys.stderr.write(emsg)
+                sys.exit(1)
+            shf_str1 = str(shifted_resid1).rjust(4)
+            shf_str2 = str(shifted_resid2).rjust(4)
+            yield line[:17] + shf_str1 + line[21:31] + shf_str2 + line[35:]
+
+        elif line.startswith(link_resids):
+            shifted_resid1 = int(line[22:26]) + shifting_factor
+            shifted_resid2 = int(line[52:56]) + shifting_factor
+            if shifted_resid1 > 9999 or shifted_resid1 > 9999:
+                emsg = 'Cannot set residue number above 9999.\n'
+                sys.stderr.write(emsg)
+                sys.exit(1)
+            shf_str1 = str(shifted_resid1).rjust(4)
+            shf_str2 = str(shifted_resid2).rjust(4)
+            yield line[:21] + shf_str1 + line[26:52] + shf_str2 + line[56:]
 
         else:
             yield line
