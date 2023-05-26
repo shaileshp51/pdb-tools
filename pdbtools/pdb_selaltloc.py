@@ -151,6 +151,7 @@ def select_altloc(fhandle, selloc=None, byocc=False):
     prev_altloc = ''
     prev_resname = ''
     prev_resnum = ''
+    prev_atomname = ''
 
     # uses the same function names in the loop below. However, depending
     # on the input options, the functions used are different. One is
@@ -171,10 +172,12 @@ def select_altloc(fhandle, selloc=None, byocc=False):
             altloc = line[16]
             resname = line[17:20]
             resnum = line[22:26].strip()
+            atomname = line[12:16]
 
             if is_another_altloc_group(
                     altloc, prev_altloc, resnum, prev_resnum,
-                    resname, prev_resname, altloc_lines, res_per_loc):
+                    resname, prev_resname, prev_atomname,
+                    atomname, altloc_lines, res_per_loc):
                 # if we see the altloc group has changed, we should flush
                 # the lines observed for the previous altloc group
 
@@ -197,11 +200,12 @@ def select_altloc(fhandle, selloc=None, byocc=False):
 
             # registers which residues are seen for each identifier
             rploc = res_per_loc.setdefault(altloc, set())
-            rploc.add((resname, resnum))
+            rploc.add((resname, resnum, atomname))
 
             prev_altloc = altloc
             prev_resnum = resnum
             prev_resname = resname
+            prev_atomname = atomname
 
         elif line.startswith(terminators):
             # before flushing the terminator line
@@ -220,6 +224,7 @@ def select_altloc(fhandle, selloc=None, byocc=False):
             prev_altloc = ''
             prev_resname = ''
             prev_resnum = ''
+            prev_atomname = ''
 
             yield line  # the terminator line
 
@@ -227,6 +232,7 @@ def select_altloc(fhandle, selloc=None, byocc=False):
             prev_altloc = ''
             prev_resname = ''
             prev_resnum = ''
+            prev_atomname = ''
             yield line
 
     # end of for loop
@@ -252,6 +258,8 @@ def is_another_altloc_group(
         prev_resnum,
         resname,
         prev_resname,
+        prev_atomname,
+        atomname,
         altloc_lines,
         rploc
 ):
@@ -262,25 +270,30 @@ def is_another_altloc_group(
     ra1 = resname
     ru0 = prev_resnum
     ru1 = resnum
+    am0 = prev_atomname
+    am1 = atomname
     rl = altloc_lines
     rv = list(rploc.values())
 
     is_another = (
-        all((a0, ra0, ru0)) and (
-            (a0 != a1 and a1 == ' ' and ru1 > ru0)
-            or (a0 == ' ' and a1 != ' ' and ru1 > ru0)
-            or (a0 == ' ' and a1 == ' ' and (ru1 != ru0 or ra1 != ra0))
+        all((a0, ra0, ru0, am0)) and (
+            (a0 != a1 and a1 == ' ' and (ru1 > ru0 or am0 != am1))
+            or (a0 == ' ' and a1 != ' ' and (ru1 > ru0 or am0 != am1))
+            or (a0 == ' ' and a1 == ' ' and (ru1 != ru0 or ra1 != ra0 or am0 != am1))
             or (
                 a0 == a1
                 and a0 != ' '
                 and a1 in rl
+                and am0 == am1
                 and ru1 > ru0
                 and len(rl) > 1
                 and all(len(v) == len(rv[0]) for v in rv[1:])
             )
         )
     )
-
+    if(len(rv) > 1):
+        pass
+        # print(is_another, rv)
     return is_another
 
 
